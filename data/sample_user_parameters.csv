@@ -1,0 +1,11 @@
+parameter,value
+lot_order_index,pnl
+gain_lot_ordering,high-to-low
+loss_lot_ordering,high-to-low
+min_lot_value,50
+carry_forward_stl,2000
+carry_forward_ltl,1500
+oid_limit,3000
+fed_oi_marginal_tax_rate,0.24
+fed_cg_marginal_tax_rate,0.15
+state_income_marginal_tax_rate,0.05

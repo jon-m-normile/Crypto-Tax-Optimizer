@@ -1,0 +1,3 @@
+﻿Purchase ID,Status,Amount,Settled,# Sales,STG,LTG,STL,LTL,Category,Time
+b25f2e6b,✅ Completed,"$5,000.00","$5,000.00",72,$0.00,$577.06,$-0.90,"$-3,155.32",Groceries - Convenience Store,2026-02-06 12:02:04
+2a699acb,✅ Completed,"$1,000.00","$1,000.00",1,$0.00,$0.00,$0.00,$-952.65,Groceries - Convenience Store,2026-02-06 12:00:22
