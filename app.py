@@ -1356,8 +1356,8 @@ def main():
         st.markdown("*Demonstrating intelligent tax-optimized cryptocurrency lot selection*")
         # Add spacing before tabs
         st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "💳 Purchase", "📈 Portfolio", "📜 History", "🌊 Tax Waterfall", "🧮 Tax Detail"
+        tab1, tab2, tab3, tab5 = st.tabs([
+            "💳 Purchase", "📈 Portfolio", "📜 History", "🧮 Tax Detail"
         ])
     with header_col2:
         st.markdown("<div style='margin-top: 3.5rem;'></div>", unsafe_allow_html=True)
@@ -1372,8 +1372,6 @@ def main():
         render_portfolio_section()
     with tab3:
         render_transaction_history()
-    with tab4:
-        render_tax_waterfall_status()
     with tab5:
         render_tax_calculation_detail()
 
