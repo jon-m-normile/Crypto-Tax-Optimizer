@@ -1456,7 +1456,7 @@ def _build_tax_narrative(result, params) -> str:
 
 def render_tax_calculation_detail():
     """Render detailed tax calculation breakdown"""
-    st.markdown("### 🧮 Tax Calculation Detail")
+    st.markdown("### 🧮 Tax Calculation")
 
     if st.session_state.tax_result is None:
         st.info("Process a purchase to see tax calculations.")
@@ -1465,67 +1465,66 @@ def render_tax_calculation_detail():
     result = st.session_state.tax_result
     params = st.session_state.parameters
 
-    col1, col2, col3 = st.columns(3)
+    sub1, sub2 = st.tabs(["Detail", "Description"])
 
-    with col1:
-        st.markdown("#### Realized Gains & Losses")
-        st.caption("From sales of purchase lots to fund debit card purchases")
-        # total_stl and total_ltl are stored negative by the TCE; display losses as negative
-        st.table(_make_netting_table(
-            result.total_stg, result.total_stl,
-            result.total_ltg, result.total_ltl,
-        ))
+    with sub1:
+        col1, col2, col3 = st.columns(3)
 
-    with col2:
-        st.markdown("#### 1st Netting")
-        st.caption("ST gains net ST losses; LT gains net LT losses")
-        st.table(_make_netting_table(
-            result.first_net_stg, result.first_net_stl,
-            result.first_net_ltg, result.first_net_ltl,
-        ))
+        with col1:
+            st.markdown("#### Realized Gains & Losses")
+            st.caption("From sales of purchase lots to fund debit card purchases")
+            st.table(_make_netting_table(
+                result.total_stg, result.total_stl,
+                result.total_ltg, result.total_ltl,
+            ))
 
-        st.markdown("#### 2nd Netting")
-        st.caption("Carry-forward losses netted vs. gains or added to losses")
-        st.table(_make_netting_table(
-            result.second_net_stg, result.second_net_stl,
-            result.second_net_ltg, result.second_net_ltl,
-        ))
+        with col2:
+            st.markdown("#### 1st Netting")
+            st.caption("ST gains net ST losses; LT gains net LT losses")
+            st.table(_make_netting_table(
+                result.first_net_stg, result.first_net_stl,
+                result.first_net_ltg, result.first_net_ltl,
+            ))
 
-        st.markdown("#### 3rd Netting")
-        st.caption("Cross ST/LT netting — final taxable amounts")
-        st.table(_make_netting_table(
-            result.final_stg, result.final_stl,
-            result.final_ltg, result.final_ltl,
-        ))
+            st.markdown("#### 2nd Netting")
+            st.caption("Carry-forward losses netted vs. gains or added to losses")
+            st.table(_make_netting_table(
+                result.second_net_stg, result.second_net_stl,
+                result.second_net_ltg, result.second_net_ltl,
+            ))
 
-    with col3:
-        st.markdown("#### Ordinary Income Deduction")
-        oid_consumed = abs(result.oid_applied)
-        oid_remaining = abs(params.oid_limit) - oid_consumed
-        st.write(f"**Consumed OID:** ${oid_consumed:,.2f}")
-        st.write(f"**Remaining OID:** ${oid_remaining:,.2f}")
+            st.markdown("#### 3rd Netting")
+            st.caption("Cross ST/LT netting — final taxable amounts")
+            st.table(_make_netting_table(
+                result.final_stg, result.final_stl,
+                result.final_ltg, result.final_ltl,
+            ))
 
-        st.markdown("#### Carry Forwards")
-        # "Consumed" = offset by gains (2nd netting) + absorbed by OID (post 3rd netting)
-        # "Next Year" = what actually carries forward (TCE already computes this)
-        cfstl_next = abs(result.next_year_cfstl)
-        cfltl_next = abs(result.next_year_cfltl)
-        cfstl_consumed = abs(params.cfstl) - cfstl_next
-        cfltl_consumed = abs(params.cfltl) - cfltl_next
-        st.write(f"**Consumed CF-STL:** ${cfstl_consumed:,.2f}")
-        st.write(f"**Next Year CF-STL:** ${cfstl_next:,.2f}")
-        st.write(f"**Consumed CF-LTL:** ${cfltl_consumed:,.2f}")
-        st.write(f"**Next Year CF-LTL:** ${cfltl_next:,.2f}")
+        with col3:
+            st.markdown("#### Ordinary Income Deduction")
+            oid_consumed = abs(result.oid_applied)
+            oid_remaining = abs(params.oid_limit) - oid_consumed
+            st.write(f"**Consumed OID:** ${oid_consumed:,.2f}")
+            st.write(f"**Remaining OID:** ${oid_remaining:,.2f}")
 
-    # --- Dynamic narrative based on actual tax result ---
-    st.markdown("### Tax Calculation Description")
-    narrative = _build_tax_narrative(result, params)
-    st.markdown(
-        f'<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; '
-        f'padding: 1.25rem 1.5rem; margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.7; '
-        f'color: #333;">{narrative}</div>',
-        unsafe_allow_html=True,
-    )
+            st.markdown("#### Carry Forwards")
+            cfstl_next = abs(result.next_year_cfstl)
+            cfltl_next = abs(result.next_year_cfltl)
+            cfstl_consumed = abs(params.cfstl) - cfstl_next
+            cfltl_consumed = abs(params.cfltl) - cfltl_next
+            st.write(f"**Consumed CF-STL:** ${cfstl_consumed:,.2f}")
+            st.write(f"**Next Year CF-STL:** ${cfstl_next:,.2f}")
+            st.write(f"**Consumed CF-LTL:** ${cfltl_consumed:,.2f}")
+            st.write(f"**Next Year CF-LTL:** ${cfltl_next:,.2f}")
+
+    with sub2:
+        narrative = _build_tax_narrative(result, params)
+        st.markdown(
+            f'<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; '
+            f'padding: 1.25rem 1.5rem; margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.7; '
+            f'color: #333;">{narrative}</div>',
+            unsafe_allow_html=True,
+        )
 
 
 def main():
@@ -1548,7 +1547,7 @@ def main():
         # Add spacing before tabs
         st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
         tab1, tab2, tab3, tab5 = st.tabs([
-            "💳 Purchase", "📈 Portfolio", "📜 History", "🧮 Tax Detail"
+            "💳 Purchase", "📈 Portfolio", "📜 History", "🧮 Tax Calculation"
         ])
     with header_col2:
         st.markdown("<div style='margin-top: 3.5rem;'></div>", unsafe_allow_html=True)
