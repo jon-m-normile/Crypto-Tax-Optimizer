@@ -1015,7 +1015,7 @@ def render_portfolio_section():
             </div>""", unsafe_allow_html=True)
 
         # Charts
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             if summary['by_currency']:
                 currency_data = pd.DataFrame([
@@ -1038,6 +1038,19 @@ def render_portfolio_section():
             fig = go.Figure(data=[go.Bar(x=pnl_data['Type'], y=pnl_data['P&L'], marker_color=colors)])
             fig.update_layout(title='Unrealized P&L by Type', height=300, yaxis_title='P&L ($)')
             st.plotly_chart(fig, use_container_width=True)
+
+        with col3:
+            if summary['by_currency']:
+                cur_pnl_data = pd.DataFrame([
+                    {"Currency": k, "P&L": v['pnl']}
+                    for k, v in summary['by_currency'].items()
+                ])
+                if not cur_pnl_data.empty:
+                    cur_pnl_data = cur_pnl_data.sort_values('P&L', ascending=False)
+                    colors = ['#28a745' if x >= 0 else '#dc3545' for x in cur_pnl_data['P&L']]
+                    fig = go.Figure(data=[go.Bar(x=cur_pnl_data['Currency'], y=cur_pnl_data['P&L'], marker_color=colors)])
+                    fig.update_layout(title='Unrealized P&L by Currency', height=300, yaxis_title='P&L ($)')
+                    st.plotly_chart(fig, use_container_width=True)
 
     with tab2:
         # Lots table with TWS filter
