@@ -1273,51 +1273,180 @@ def _make_netting_table(stg: float, stl: float, ltg: float, ltl: float) -> pd.Da
     )
 
 
+def _build_tax_narrative(result, params) -> str:
+    """Build a dynamic prose description of the tax calculation based on actual results."""
+    f = lambda v: f"${abs(v):,.2f}"  # format as positive dollar amount
+    lines = []
+
+    # --- Realized Gains & Losses ---
+    parts = []
+    if result.total_stg > 0:
+        parts.append(f"**{f(result.total_stg)}** in short-term gains")
+    if result.total_stl < 0:
+        parts.append(f"**{f(result.total_stl)}** in short-term losses")
+    if result.total_ltg > 0:
+        parts.append(f"**{f(result.total_ltg)}** in long-term gains")
+    if result.total_ltl < 0:
+        parts.append(f"**{f(result.total_ltl)}** in long-term losses")
+    if parts:
+        lines.append(
+            "<b>Realized Gains &amp; Losses:</b> "
+            "The lots sold to fund your debit card purchases produced "
+            + ", ".join(parts) + "."
+        )
+    else:
+        lines.append(
+            "<b>Realized Gains &amp; Losses:</b> "
+            "No realized gains or losses from the current sales."
+        )
+
+    # --- 1st Netting ---
+    net_st = result.total_stg + result.total_stl
+    net_lt = result.total_ltg + result.total_ltl
+    st_word = "gain" if net_st >= 0 else "loss"
+    lt_word = "gain" if net_lt >= 0 else "loss"
+    netting1 = (
+        f"<b>1st Netting (Same-Term):</b> "
+        f"Short-term gains and losses net to a short-term {st_word} of <b>{f(net_st)}</b>. "
+        f"Long-term gains and losses net to a long-term {lt_word} of <b>{f(net_lt)}</b>."
+    )
+    lines.append(netting1)
+
+    # --- 2nd Netting ---
+    has_cf = params.cfstl < 0 or params.cfltl < 0
+    if has_cf:
+        cf_parts = []
+        if params.cfstl < 0:
+            cf_parts.append(f"a carry-forward short-term loss of <b>{f(params.cfstl)}</b>")
+        if params.cfltl < 0:
+            cf_parts.append(f"a carry-forward long-term loss of <b>{f(params.cfltl)}</b>")
+        net_st_after = result.second_net_stg + result.second_net_stl
+        net_lt_after = result.second_net_ltg + result.second_net_ltl
+        st_word2 = "gain" if net_st_after >= 0 else "loss"
+        lt_word2 = "gain" if net_lt_after >= 0 else "loss"
+        netting2 = (
+            f"<b>2nd Netting (Carry-Forwards):</b> "
+            f"You entered the year with {' and '.join(cf_parts)}. "
+            f"After applying carry-forwards, the net short-term position is a {st_word2} of "
+            f"<b>{f(net_st_after)}</b> and the net long-term position is a {lt_word2} of "
+            f"<b>{f(net_lt_after)}</b>."
+        )
+    else:
+        netting2 = (
+            "<b>2nd Netting (Carry-Forwards):</b> "
+            "No carry-forward losses from prior years, so positions are unchanged."
+        )
+    lines.append(netting2)
+
+    # --- 3rd Netting ---
+    pre_st = result.second_net_stg + result.second_net_stl
+    pre_lt = result.second_net_ltg + result.second_net_ltl
+    final_net_st = result.final_stg + result.final_stl
+    final_net_lt = result.final_ltg + result.final_ltl
+    cross_netted = (pre_st > 0 and pre_lt < 0) or (pre_st < 0 and pre_lt > 0)
+    if cross_netted:
+        final_st_word = "gain" if final_net_st >= 0 else "loss"
+        final_lt_word = "gain" if final_net_lt >= 0 else "loss"
+        netting3 = (
+            f"<b>3rd Netting (Cross-Term):</b> "
+            f"Because one term shows a gain and the other a loss, they are netted across "
+            f"term boundaries. The final short-term position is a {final_st_word} of "
+            f"<b>{f(final_net_st)}</b> and the final long-term position is a {final_lt_word} of "
+            f"<b>{f(final_net_lt)}</b>."
+        )
+    else:
+        netting3 = (
+            "<b>3rd Netting (Cross-Term):</b> "
+            "Both terms are the same direction (both gains or both losses), "
+            "so no cross-term netting is required. Positions are unchanged."
+        )
+    lines.append(netting3)
+
+    # --- OID ---
+    if result.oid_applied < 0:
+        oid_text = (
+            f"<b>Ordinary Income Deduction (OID):</b> "
+            f"After netting, <b>{f(result.oid_applied)}</b> in remaining losses "
+            f"are applied as an ordinary income deduction (annual limit: "
+            f"{f(params.oid_limit)}). This reduces your taxable ordinary income, "
+            f"producing a tax credit of <b>{f(abs(result.oid_applied) * params.fed_oi_marginal_tax_rate)}</b> "
+            f"at your {params.fed_oi_marginal_tax_rate:.0%} federal ordinary income rate."
+        )
+    else:
+        oid_text = (
+            "<b>Ordinary Income Deduction (OID):</b> "
+            "No net losses remain after netting, so no ordinary income deduction is applied."
+        )
+    lines.append(oid_text)
+
+    # --- Carry-Forwards to Next Year ---
+    has_next_cf = result.next_year_cfstl < 0 or result.next_year_cfltl < 0
+    if has_next_cf:
+        cf_next_parts = []
+        if result.next_year_cfstl < 0:
+            cf_next_parts.append(f"<b>{f(result.next_year_cfstl)}</b> in short-term losses")
+        if result.next_year_cfltl < 0:
+            cf_next_parts.append(f"<b>{f(result.next_year_cfltl)}</b> in long-term losses")
+        cf_text = (
+            f"<b>Carry-Forwards to Next Year:</b> "
+            f"After netting and OID, {' and '.join(cf_next_parts)} "
+            f"will carry forward to the next tax year."
+        )
+    else:
+        cf_text = (
+            "<b>Carry-Forwards to Next Year:</b> "
+            "All losses were fully consumed by gains and OID. Nothing carries forward."
+        )
+    lines.append(cf_text)
+
+    # --- Tax Obligation ---
+    tax_parts = []
+    if result.final_stg > 0:
+        stg_after_oid = max(result.final_stg + result.oid_applied, 0)
+        if result.oid_applied < 0:
+            tax_parts.append(
+                f"The net short-term gain of {f(result.final_stg)}, reduced by the "
+                f"{f(result.oid_applied)} OID credit to {f(stg_after_oid)}, "
+                f"is taxed at your {params.fed_oi_marginal_tax_rate:.0%} federal ordinary income rate "
+                f"for <b>{f(result.fed_oi_tax)}</b> in federal ordinary income tax"
+            )
+        else:
+            tax_parts.append(
+                f"The net short-term gain of {f(result.final_stg)} is taxed at your "
+                f"{params.fed_oi_marginal_tax_rate:.0%} federal ordinary income rate "
+                f"for <b>{f(result.fed_oi_tax)}</b> in federal ordinary income tax"
+            )
+    if result.final_ltg > 0:
+        tax_parts.append(
+            f"The net long-term gain of {f(result.final_ltg)} is taxed at your "
+            f"{params.fed_cg_marginal_tax_rate:.0%} federal capital gains rate "
+            f"for <b>{f(result.fed_cg_tax)}</b> in federal capital gains tax"
+        )
+    if result.state_tax > 0:
+        total_gains = result.final_stg + result.final_ltg
+        tax_parts.append(
+            f"Total gains of {f(total_gains)} are taxed at your "
+            f"{params.state_income_marginal_tax_rate:.0%} state income rate "
+            f"for <b>{f(result.state_tax)}</b> in state tax"
+        )
+    if tax_parts:
+        tax_text = (
+            "<b>Tax Obligation:</b> " + ". ".join(tax_parts)
+            + f". Your total tax obligation is <b>{f(result.total_tax)}</b>."
+        )
+    else:
+        tax_text = (
+            "<b>Tax Obligation:</b> "
+            f"No taxable gains remain after netting. Your total tax obligation is <b>$0.00</b>."
+        )
+    lines.append(tax_text)
+
+    return "<br><br>".join(lines)
+
+
 def render_tax_calculation_detail():
     """Render detailed tax calculation breakdown"""
     st.markdown("### 🧮 Tax Calculation Detail")
-
-    st.markdown("""
-<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.7; color: #333;">
-
-**How the Tax Calculation Engine determines your Tax Status:**
-
-When you make a debit card purchase, the Tax Optimization Algorithm selects which crypto lots to sell
-to fund the transaction. Each sale produces a realized capital gain or loss, classified as either
-**short-term** (held 365 days or less) or **long-term** (held more than 365 days). The Tax Calculation
-Engine then processes these gains and losses through a series of netting steps that follow IRS capital
-gains netting rules.
-
-**1st Netting — Same-Term Netting:** Short-term gains are netted against short-term losses, and
-long-term gains are netted against long-term losses. This produces a net short-term position and a
-net long-term position, each of which may be a gain or a loss.
-
-**2nd Netting — Carry-Forward Application:** Any carry-forward losses from prior tax years are
-applied. Carry-forward short-term losses offset net short-term gains, and carry-forward long-term
-losses offset net long-term gains. If the carry-forward exceeds the gain, the position flips to a
-loss. If the position was already a loss, the carry-forward is added to it.
-
-**3rd Netting — Cross-Term Netting:** If one term shows a net gain and the other shows a net loss,
-they are netted against each other across term boundaries. The result retains the character (short-term
-or long-term) of whichever side has the larger absolute value. If both terms are gains or both are
-losses, they remain separate.
-
-**Ordinary Income Deduction (OID):** After the three netting steps, any remaining net losses can
-reduce ordinary income up to the annual IRS limit (default $3,000). Short-term losses are applied
-to the OID first, followed by long-term losses for any remaining capacity. The OID provides a direct
-reduction in taxable ordinary income, producing a tax credit at the taxpayer's federal ordinary income
-rate.
-
-**Carry-Forwards to Next Year:** Any losses not consumed by gains during netting or by the OID
-carry forward to the next tax year, retaining their short-term or long-term character.
-
-**Tax Obligation:** The final taxable amounts are applied against the taxpayer's marginal tax rates.
-Net short-term gains (reduced by any OID credit) are taxed at the federal ordinary income rate.
-Net long-term gains are taxed at the lower federal capital gains rate. Both short-term and long-term
-gains are subject to state income tax.
-
-</div>
-""", unsafe_allow_html=True)
 
     if st.session_state.tax_result is None:
         st.info("Process a purchase to see tax calculations.")
@@ -1325,6 +1454,15 @@ gains are subject to state income tax.
 
     result = st.session_state.tax_result
     params = st.session_state.parameters
+
+    # --- Dynamic narrative based on actual tax result ---
+    narrative = _build_tax_narrative(result, params)
+    st.markdown(
+        f'<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; '
+        f'padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.7; '
+        f'color: #333;">{narrative}</div>',
+        unsafe_allow_html=True,
+    )
 
     col1, col2, col3 = st.columns(3)
 
