@@ -1277,6 +1277,48 @@ def render_tax_calculation_detail():
     """Render detailed tax calculation breakdown"""
     st.markdown("### 🧮 Tax Calculation Detail")
 
+    st.markdown("""
+<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.7; color: #333;">
+
+**How the Tax Calculation Engine determines your Tax Status:**
+
+When you make a debit card purchase, the Tax Optimization Algorithm selects which crypto lots to sell
+to fund the transaction. Each sale produces a realized capital gain or loss, classified as either
+**short-term** (held 365 days or less) or **long-term** (held more than 365 days). The Tax Calculation
+Engine then processes these gains and losses through a series of netting steps that follow IRS capital
+gains netting rules.
+
+**1st Netting — Same-Term Netting:** Short-term gains are netted against short-term losses, and
+long-term gains are netted against long-term losses. This produces a net short-term position and a
+net long-term position, each of which may be a gain or a loss.
+
+**2nd Netting — Carry-Forward Application:** Any carry-forward losses from prior tax years are
+applied. Carry-forward short-term losses offset net short-term gains, and carry-forward long-term
+losses offset net long-term gains. If the carry-forward exceeds the gain, the position flips to a
+loss. If the position was already a loss, the carry-forward is added to it.
+
+**3rd Netting — Cross-Term Netting:** If one term shows a net gain and the other shows a net loss,
+they are netted against each other across term boundaries. The result retains the character (short-term
+or long-term) of whichever side has the larger absolute value. If both terms are gains or both are
+losses, they remain separate.
+
+**Ordinary Income Deduction (OID):** After the three netting steps, any remaining net losses can
+reduce ordinary income up to the annual IRS limit (default $3,000). Short-term losses are applied
+to the OID first, followed by long-term losses for any remaining capacity. The OID provides a direct
+reduction in taxable ordinary income, producing a tax credit at the taxpayer's federal ordinary income
+rate.
+
+**Carry-Forwards to Next Year:** Any losses not consumed by gains during netting or by the OID
+carry forward to the next tax year, retaining their short-term or long-term character.
+
+**Tax Obligation:** The final taxable amounts are applied against the taxpayer's marginal tax rates.
+Net short-term gains (reduced by any OID credit) are taxed at the federal ordinary income rate.
+Net long-term gains are taxed at the lower federal capital gains rate. Both short-term and long-term
+gains are subject to state income tax.
+
+</div>
+""", unsafe_allow_html=True)
+
     if st.session_state.tax_result is None:
         st.info("Process a purchase to see tax calculations.")
         return
