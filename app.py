@@ -1455,15 +1455,6 @@ def render_tax_calculation_detail():
     result = st.session_state.tax_result
     params = st.session_state.parameters
 
-    # --- Dynamic narrative based on actual tax result ---
-    narrative = _build_tax_narrative(result, params)
-    st.markdown(
-        f'<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; '
-        f'padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.7; '
-        f'color: #333;">{narrative}</div>',
-        unsafe_allow_html=True,
-    )
-
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -1515,6 +1506,16 @@ def render_tax_calculation_detail():
         st.write(f"**Next Year CF-STL:** ${cfstl_next:,.2f}")
         st.write(f"**Consumed CF-LTL:** ${cfltl_consumed:,.2f}")
         st.write(f"**Next Year CF-LTL:** ${cfltl_next:,.2f}")
+
+    # --- Dynamic narrative based on actual tax result ---
+    st.markdown("### Tax Calculation Description")
+    narrative = _build_tax_narrative(result, params)
+    st.markdown(
+        f'<div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; '
+        f'padding: 1.25rem 1.5rem; margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.7; '
+        f'color: #333;">{narrative}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def main():
