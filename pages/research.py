@@ -198,6 +198,10 @@ st.markdown("""
     header[data-testid="stHeader"] {
         height: 2.5rem;
     }
+    /* Hide multi-page navigation links */
+    [data-testid="stSidebarNav"] {
+        display: none !important;
+    }
 
     /* --- Pentathlon Sport Loader (replaces default spinner icon) --- */
     /* Hide the default spinning circle */
